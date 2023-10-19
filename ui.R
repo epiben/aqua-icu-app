@@ -17,6 +17,7 @@ sidebar <- dashboardSidebar(
 		collapsible = TRUE,
 		background = "black",
 		solidHeader = TRUE,
+		numericInput("point_size", "Point size", value = 2, min = 0, step = 0.25),
 		numericInput("plot_text_size", "Text size", value = 10, min = 1, step = 1),
 		numericInput("strat_label_size", "Text size for stratitification labels", value = 9, min = 1, step = 1),
 		textInput("brewer_style", "ColorBrewer palette (name)", value = "Set1"),

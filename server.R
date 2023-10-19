@@ -81,28 +81,28 @@ server <- function(input, output, session) {
 			mutate(
 				across(# ensure correct order of vertical axis
 					grouping_var,
-					\(x) factor(x, levels = rev(count(., grouping_var, sort = TRUE)$grouping_var))
-				),
-				is_first_level = as.integer(grouping_var) == max(as.integer(grouping_var))
+					\(x) {
+						lvls <- rev(count(., grouping_var, sort = TRUE)$grouping_var)
+						factor(x, levels = lvls, labels = all_strat_vars[lvls])
+					}
+				)
 			) %>%
 			group_by(grouping_var) %>%
 			mutate(draw_ribbon = seq_len(n()) %% 2 == 1) %>%
 			ungroup()
-		labels <- all_strat_vars[levels(bar_coords$grouping_var)]
-		levels(bar_coords$grouping_var) <- as.list(setNames(names(labels), labels))
 
 		bar_coords
 	})
 
 	output$the_plot <- renderPlot({
 		bar_plot <- ggplot(bar_coords(), aes(y = grouping_var)) +
-			annotate("point", x = rep(range(df()$x), 3), y = rep(unique(bar_coords()$grouping_var), each = 2), alpha = 0) +
+			annotate("point", x = range(df()$x), y = rep(bar_coords()$grouping_var[1], 2), alpha = 0) +
 				# these transparent points ensure alignment between x axes in bar and point plots
 			geom_tile(aes(x = label_x, width = xmax - xmin + 1), ~ filter(., draw_ribbon), alpha = 0.05) +
 			annotate("tile", y = unique(bar_coords()$grouping_var), x = 0, height = 1, width = Inf, fill = NA, colour = "white", linewidth = 1) +
 			geom_text(aes(x = label_x, label = label), size = input$strat_label_size/.pt, hjust = 0.5) +
 			scale_x_reverse(expand = c(0.01, 0.01)) +
-			scale_y_discrete(expand = c(0.01, 0.5)) +
+			scale_y_discrete(expand = c(0.01, 0.5), breaks = levels(bar_coords()$grouping_var)) +
 			theme_minimal() +
 			theme(
 				panel.grid = element_blank(),
@@ -121,7 +121,7 @@ server <- function(input, output, session) {
 		point_plot <- ggplot(df()) +
 			helper_line +
 			geom_rect(aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), ribbon_coords(), alpha = 0.05) +
-			geom_point(aes(x = x, y = get(input$y_var), shape = if (input$shape_var != input$colour_var) shape_column else NULL, colour = colour_column)) +
+			geom_point(aes(x = x, y = get(input$y_var), shape = if (input$shape_var != input$colour_var) shape_column else NULL, colour = colour_column), size = input$point_size) +
 			scale_colour_brewer(palette = input$brewer_style) +
 			scale_y_continuous(
 				expand = c(0.01, 0.01),
