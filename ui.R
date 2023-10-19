@@ -8,14 +8,21 @@ sidebar <- dashboardSidebar(
 	selectInput("start_of_followup", "Start of follow-up", start_of_followup_choices, multiple = FALSE, selected = "primary"),
 	selectInput("analysis", "Analaysis", analysis_choices, multiple = FALSE, selected = "all"),
 	selectInput("y_var", "Performance metric", performance_metrics_choices, multiple = FALSE, selected = "rejection_proportion"),
-	hr(),
 	selectInput("shape_var", "Shape variable", shape_colour_choices, multiple = FALSE, selected = "final_hrqol"),
 	selectInput("colour_var", "Colouring variable", shape_colour_choices, multiple = FALSE, selected = "n_patients_per_arm"),
-	hr(),
-	numericInput("strat_label_size", "Text size for stratitification labels", value = 9, min = 1, step = 1),
-	textInput("brewer_style", "ColorBrewer palette (name)", value = "Set1"),
-	numericInput("relative_plot_height", "Plot height (% of window height)", value = 90, min = 0, step = 5),
-	sliderInput("plot_bars_ratio", "Ratio between the two sub-plots", min = 1, max = 10, value = 4, pre = "1-to-", step = 1, ticks = FALSE)
+	box(
+		title = "Apperance",
+		width = 12,
+		collapsed = TRUE,
+		collapsible = TRUE,
+		background = "black",
+		solidHeader = TRUE,
+		numericInput("plot_text_size", "Text size", value = 11, min = 1, step = 1),
+		numericInput("strat_label_size", "Text size for stratitification labels", value = 9, min = 1, step = 1),
+		textInput("brewer_style", "ColorBrewer palette (name)", value = "Set1"),
+		numericInput("relative_plot_height", "Plot height (% of window height)", value = 90, min = 0, step = 5),
+		sliderInput("plot_bars_ratio", "Ratio between the two sub-plots", min = 1, max = 10, value = 4, pre = "1-to-", step = 1, ticks = FALSE)
+	)
 )
 
 body <- dashboardBody(
