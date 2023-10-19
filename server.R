@@ -94,10 +94,10 @@ server <- function(input, output, session) {
 		bar_coords
 	})
 
-	output$the_plot <- renderPlot({
-		bar_plot <- ggplot(bar_coords(), aes(y = grouping_var)) +
+	bar_plot <- reactive({
+		ggplot(bar_coords(), aes(y = grouping_var)) +
 			annotate("point", x = range(df()$x), y = rep(bar_coords()$grouping_var[1], 2), alpha = 0) +
-				# these transparent points ensure alignment between x axes in bar and point plots
+			# these transparent points ensure alignment between x axes in bar and point plots
 			geom_tile(aes(x = label_x, width = xmax - xmin + 1), ~ filter(., draw_ribbon), alpha = 0.05) +
 			annotate("tile", y = unique(bar_coords()$grouping_var), x = 0, height = 1, width = Inf, fill = NA, colour = "white", linewidth = 1) +
 			geom_text(aes(x = label_x, label = label), size = input$strat_label_size/.pt, hjust = 0.5) +
@@ -111,14 +111,16 @@ server <- function(input, output, session) {
 				axis.text.y = element_blank()
 			) +
 			coord_flip()
+	})
 
+	points_plot <- reactive({
 		helper_line <- if (input$y_var == "rejection_proportion") {
 			geom_hline(yintercept = 0.05, linewidth = 0.25, linetype = 2)
-			} else {
-				geom_blank()
-			}
+		} else {
+			geom_blank()
+		}
 
-		point_plot <- ggplot(df()) +
+		ggplot(df()) +
 			helper_line +
 			geom_rect(aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), ribbon_coords(), alpha = 0.05) +
 			geom_point(aes(x = x, y = get(input$y_var), shape = if (input$shape_var != input$colour_var) shape_column else NULL, colour = colour_column), size = input$point_size) +
@@ -153,9 +155,10 @@ server <- function(input, output, session) {
 				shape = guide_legend(title = paste0(all_strat_vars[input$shape_var], ":"))
 			) +
 			coord_flip()
+	})
 
-		# Vertical layout
-		bar_plot + point_plot +
+	output$the_plot <- renderPlot({
+		bar_plot() + points_plot() +
 			plot_layout(nrow = 1, widths = c(1, input$plot_bars_ratio))
 	})
 
