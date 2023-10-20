@@ -15,8 +15,7 @@ all_strat_vars <- c( # all variables by which to be stratified
 	"n_patients_per_arm" = "Patients \nper arm"
 )
 
-comparisons <- qs::qread("inst/comparisons.qs") %>%
-	as_tibble()
+comparisons <- as_tibble(qs::qread("inst/comparisons.qs"))
 
 beautify_labels <- c(
 	# acceleration_hrqol/prop_mortality_benefitters
@@ -77,3 +76,8 @@ start_of_followup_choices <- list(
 shape_colour_choices <- as.list(
 	setNames(names(all_strat_vars), all_strat_vars)
 )
+
+make_fct <- function(x) {
+	level_idx <- names(beautify_labels) %in% unique(x)
+	factor(x, names(beautify_labels[level_idx]), beautify_labels[level_idx])
+}
