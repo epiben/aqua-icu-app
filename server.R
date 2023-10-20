@@ -1,20 +1,23 @@
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 	# Values from cdata returned as text
-	clientdataText <- reactive({
-		cdata <- session$clientData
-		cnames <- names(cdata)
-
-		allvalues <- lapply(cnames, function(name) {
-			paste(name, cdata[[name]], sep = " = ")
-		})
-		paste(allvalues, collapse = "\n")
-	})
-
-	# ===
+	# used for devel purposes only
+	# clientdataText <- reactive({
+	# 	cdata <- session$clientData
+	# 	cnames <- names(cdata)
+	#
+	# 	allvalues <- lapply(cnames, function(name) {
+	# 		paste(name, cdata[[name]], sep = " = ")
+	# 	})
+	# 	paste(allvalues, collapse = "\n")
+	# })
 
 	outcome <- reactive({
-		sprintf("%s__%s", input$start_of_followup, input$operationalisation)
+		sprintf(
+			"%s__%s",
+			input$start_of_followup,
+			input$operationalisation
+		)
 	})
 
 	strat_vars <- reactive({
@@ -23,20 +26,21 @@ server <- function(input, output, session) {
 	})
 
 	df <- reactive({
-		make_fct <- function(x) {
-			level_idx <- names(beautify_labels) %in% unique(x)
-			factor(x, names(beautify_labels[level_idx]), beautify_labels[level_idx])
-		}
+		shape_col <- ifelse(
+			input$colour_var != input$shape_var,
+			input$shape_var,
+			"column_column"
+		)
 
 		comparisons %>%
 			filter(outcome == outcome() & analysis == input$analysis) %>%
-			# filter(outcome == "primary__hrqol_at_eof" & analysis == "all") %>%
+			# filter(outcome == "primary__hrqol_at_eof" & analysis == "all") %>% # for interactive dev
 			mutate(across(names(all_strat_vars), make_fct)) %>%
 			arrange(across(rev(strat_vars()))) %>%
 			mutate(
 				x = seq_len(n()),
 				colour_column = !!sym(input$colour_var),
-				shape_column = if (input$colour_var != input$shape_var) !!sym(input$shape_var) else colour_column
+				shape_column = !!sym(shape_col)
 			)
 	})
 
@@ -72,21 +76,20 @@ server <- function(input, output, session) {
 			grps[is.na(grps)] <- TRUE # needed to gracefully vals of any type
 			tmp <- lapply(
 				setNames(split(seq_len(nrow(df())), cumsum(grps)), vals[grps]),
-				function(.) tibble(label_x = mean(range(.)), xmin = min(.), xmax = max(.))
+				\(.) tibble(label_x = mean(range(.)), xmin = min(.), xmax = max(.)
+				)
 			)
 			bar_coords[[g]] <- bind_rows(tmp, .id = "label")
 		}
 
 		bar_coords <- bind_rows(bar_coords, .id = "grouping_var") %>%
-			mutate(
-				across(# ensure correct order of vertical axis
-					grouping_var,
-					\(x) {
-						lvls <- rev(count(., grouping_var, sort = TRUE)$grouping_var)
-						factor(x, levels = lvls, labels = unname(all_strat_vars[lvls]))
-					}
-				)
-			) %>%
+			mutate(across(# ensure correct order of vertical axis
+				grouping_var,
+				\(x) {
+					lvls <- rev(count(., grouping_var, sort = TRUE)$grouping_var)
+					factor(x, levels = lvls, labels = unname(all_strat_vars[lvls]))
+				}
+			)) %>%
 			group_by(grouping_var) %>%
 			mutate(draw_ribbon = seq_len(n()) %% 2 == 1) %>%
 			ungroup()
@@ -96,18 +99,46 @@ server <- function(input, output, session) {
 
 	bar_plot <- reactive({
 		ggplot(bar_coords(), aes(y = grouping_var)) +
-			annotate("point", x = range(df()$x), y = rep(bar_coords()$grouping_var[1], 2), alpha = 0) +
-			# these transparent points ensure alignment between x axes in bar and point plots
-			geom_tile(aes(x = label_x, width = xmax - xmin + 1), ~ filter(., draw_ribbon), alpha = 0.05) +
-			annotate("tile", y = unique(bar_coords()$grouping_var), x = 0, height = 1, width = Inf, fill = NA, colour = "white", linewidth = 1) +
-			geom_text(aes(x = label_x, label = label), size = input$strat_label_size/.pt, hjust = 0.5) +
+			annotate( # hack to align x axes in bar and points plots
+				"point",
+				x = range(df()$x),
+				y = rep(bar_coords()$grouping_var[1], 2),
+				alpha = 0
+			) +
+			geom_tile(
+				aes(x = label_x, width = xmax - xmin + 1),
+				~ filter(., draw_ribbon),
+				alpha = 0.05
+			) +
+			annotate(
+				"tile",
+				y = unique(bar_coords()$grouping_var),
+				x = 0,
+				height = 1,
+				width = Inf,
+				fill = NA,
+				colour = "white",
+				linewidth = 1
+			) +
+			geom_text(
+				aes(x = label_x, label = label),
+				size = input$strat_label_size / .pt,
+				hjust = 0.5
+			) +
 			scale_x_reverse(expand = c(0.01, 0.01)) +
-			scale_y_discrete(expand = c(0.01, 0.5), limits = levels(bar_coords()$grouping_var)) +
+			scale_y_discrete(
+				expand = c(0.01, 0.5),
+				limits = levels(bar_coords()$grouping_var)
+			) +
 			theme_minimal() +
 			theme(
 				panel.grid = element_blank(),
 				axis.title = element_blank(),
-				axis.text.x = element_text(size = input$plot_text_size, angle = 0, hjust = 0.5),
+				axis.text.x = element_text(
+					size = input$plot_text_size,
+					angle = 0,
+					hjust = 0.5
+				),
 				axis.text.y = element_blank()
 			) +
 			coord_flip()
@@ -115,22 +146,46 @@ server <- function(input, output, session) {
 
 	points_plot <- reactive({
 		helper_line <- if (input$y_var == "rejection_proportion") {
-			geom_hline(yintercept = 0.05, linewidth = 0.25, linetype = 2)
+			geom_hline(
+				yintercept = 0.05,
+				linewidth = 0.25,
+				linetype = 2
+			)
 		} else {
 			geom_blank()
 		}
 
 		ggplot(df()) +
 			helper_line +
-			geom_rect(aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), ribbon_coords(), alpha = 0.05) +
-			geom_point(aes(x = x, y = get(input$y_var), shape = if (input$shape_var != input$colour_var) shape_column else NULL, colour = colour_column), size = input$point_size) +
+			geom_rect(
+				aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf),
+				ribbon_coords(),
+				alpha = 0.05
+			) +
+			geom_point(
+				aes(
+					x = x,
+					y = get(input$y_var),
+					shape = if (input$shape_var != input$colour_var) {
+						shape_column
+					} else {
+						NULL
+					},
+					colour = colour_column
+				),
+				size = input$point_size
+			) +
 			scale_colour_brewer(palette = input$brewer_style) +
 			scale_y_continuous(
 				expand = c(0.01, 0.01),
 				limits = if (input$y_var == "rejection_proportion") c(0, 1) else c(NA, NA),
 				sec.axis = sec_axis(
 					trans = ~ .,
-					labels = if (input$y_var == "rejection_proportion") scales::percent else waiver(),
+					labels = if (input$y_var == "rejection_proportion") {
+						scales::percent
+					} else {
+						waiver()
+					},
 					name = names(performance_metrics_choices)[performance_metrics_choices == input$y_var]
 				)
 			) +
@@ -141,7 +196,11 @@ server <- function(input, output, session) {
 				axis.text.x.bottom = element_blank(),
 				axis.text.y = element_blank(),
 				axis.title.y = element_blank(),
-				axis.title.x.top = element_text(size = input$plot_text_size, vjust = 1.5, face = "bold"),
+				axis.title.x.top = element_text(
+					size = input$plot_text_size,
+					vjust = 1.5,
+					face = "bold"
+				),
 				axis.title.x.bottom = element_blank(),
 				panel.grid.major.y = element_blank(),
 				panel.grid.minor.y = element_blank(),
@@ -163,7 +222,10 @@ server <- function(input, output, session) {
 	})
 
 	output$main_panel <- renderUI({
-		plotOutput("the_plot", height = sprintf("%ivh", round(input$relative_plot_height)))
+		plotOutput(
+			"the_plot",
+			height = sprintf("%ivh", round(input$relative_plot_height))
+		)
 	})
 
 }
