@@ -136,6 +136,15 @@ sidebar <- dashboardSidebar(
 				ticks = FALSE
 			)
 		)
+	),
+	br(),
+	actionButton(
+		"see_source_code",
+		"Take me to the source code!",
+		class = "btn-warning",
+		icon = icon("brands fa-github"),
+		onclick ="window.open('https://github.com/epiben/aqua-icu-explorer', '_blank')",
+		width = "270"
 	)
 )
 
