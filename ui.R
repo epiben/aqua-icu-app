@@ -15,7 +15,7 @@ sidebar <- dashboardSidebar(
 			title = "Data",
 			width = 12,
 			collapsed = FALSE,
-			collapsible = FALSE,
+			collapsible = TRUE,
 			solidHeader = FALSE,
 			selectInput(
 				"operationalisation",
