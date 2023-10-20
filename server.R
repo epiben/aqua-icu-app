@@ -129,7 +129,7 @@ server <- function(input, output, session) {
 				width = Inf,
 				fill = NA,
 				colour = "white",
-				linewidth = 1
+				linewidth = 0.5
 			) +
 			geom_text(
 				aes(x = label_x, label = label),
