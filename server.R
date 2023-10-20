@@ -29,19 +29,30 @@ server <- function(input, output, session) {
 		shape_col <- ifelse(
 			input$colour_var != input$shape_var,
 			input$shape_var,
-			"column_column"
+			"colour_column"
 		)
 
-		comparisons %>%
+		out <- comparisons %>%
 			filter(outcome == outcome() & analysis == input$analysis) %>%
 			# filter(outcome == "primary__hrqol_at_eof" & analysis == "all") %>% # for interactive dev
 			mutate(across(names(all_strat_vars), make_fct)) %>%
+			filter(
+				mortality %in% input$filter_mortality,
+				acceleration_hrqol %in% input$filter_acceleration_hrqol,
+				final_hrqol %in% input$filter_final_hrqol,
+				n_patients_per_arm %in% input$filter_n_patients_per_arm,
+				prop_mortality_benefitters %in% input$filter_prop_mortality_benefitters
+			) %>%
 			arrange(across(rev(strat_vars()))) %>%
 			mutate(
 				x = seq_len(n()),
 				colour_column = !!sym(input$colour_var),
 				shape_column = !!sym(shape_col)
 			)
+
+		print(input$filter_prop_mortality_benefitters)
+		out
+
 	})
 
 	n_shape_colour_levels <- reactive({
