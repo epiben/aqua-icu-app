@@ -11,7 +11,7 @@ all_strat_vars <- c( # all variables by which to be stratified
 	"mortality" = "Mortality \nreduction (%)",
 	"prop_mortality_benefitters" = "Mortality \nbenefitters (%)",
 	"acceleration_hrqol" = "Acceleration \nin HRQoL (%)",
-	"final_hrqol" = "Improved \nfinal HRQoL \nper patient (%)",
+	"final_hrqol" = "Improved \nfinal HRQoL (%)",
 	"n_patients_per_arm" = "Patients \nper arm"
 )
 
