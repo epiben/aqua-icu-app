@@ -32,7 +32,7 @@ server <- function(input, output, session) {
 			"colour_column"
 		)
 
-		out <- comparisons %>%
+		comparisons %>%
 			filter(outcome == outcome() & analysis == input$analysis) %>%
 			# filter(outcome == "primary__hrqol_at_eof" & analysis == "all") %>% # for interactive dev
 			mutate(across(names(all_strat_vars), make_fct)) %>%
@@ -49,10 +49,6 @@ server <- function(input, output, session) {
 				colour_column = !!sym(input$colour_var),
 				shape_column = !!sym(shape_col)
 			)
-
-		print(input$filter_prop_mortality_benefitters)
-		out
-
 	})
 
 	n_shape_colour_levels <- reactive({
@@ -84,7 +80,7 @@ server <- function(input, output, session) {
 		for (g in strat_vars()) {
 			vals <- bar_combos[[g]]
 			grps <- vals != data.table::shift(vals)
-			grps[is.na(grps)] <- TRUE # needed to gracefully vals of any type
+			grps[is.na(grps)] <- TRUE # needed to gracefully handle vals of any type
 			tmp <- lapply(
 				setNames(split(seq_len(nrow(df())), cumsum(grps)), vals[grps]),
 				\(.) tibble(label_x = mean(range(.)), xmin = min(.), xmax = max(.)
@@ -110,12 +106,6 @@ server <- function(input, output, session) {
 
 	bar_plot <- reactive({
 		ggplot(bar_coords(), aes(y = grouping_var)) +
-			annotate( # hack to align x axes in bar and points plots
-				"point",
-				x = range(df()$x),
-				y = rep(bar_coords()$grouping_var[1], 2),
-				alpha = 0
-			) +
 			geom_tile(
 				aes(x = label_x, width = xmax - xmin + 1),
 				~ filter(., draw_ribbon),
@@ -145,14 +135,10 @@ server <- function(input, output, session) {
 			theme(
 				panel.grid = element_blank(),
 				axis.title = element_blank(),
-				axis.text.x = element_text(
-					size = input$plot_text_size,
-					angle = 0,
-					hjust = 0.5
-				),
+				axis.text.x = element_text(size = input$plot_text_size, hjust = 0.5),
 				axis.text.y = element_blank()
 			) +
-			coord_flip()
+			coord_flip(xlim = rev(range(df()$x)))
 	})
 
 	points_plot <- reactive({
@@ -189,9 +175,14 @@ server <- function(input, output, session) {
 			scale_colour_brewer(palette = input$brewer_style) +
 			scale_y_continuous(
 				expand = c(0.01, 0.01),
-				limits = if (input$y_var == "rejection_proportion") c(0, 1) else c(NA, NA),
+				limits = if (input$y_var == "rejection_proportion") c(0, NA) else c(NA, NA),
 				sec.axis = sec_axis(
 					trans = ~ .,
+					breaks = if (input$y_var == "rejection_proportion") {
+						\(y) c(0.05, scales::extended_breaks()(y))
+					} else {
+						waiver()
+					},
 					labels = if (input$y_var == "rejection_proportion") {
 						scales::percent
 					} else {
@@ -224,12 +215,17 @@ server <- function(input, output, session) {
 				colour = guide_legend(title = paste0(all_strat_vars[input$colour_var], ":")),
 				shape = guide_legend(title = paste0(all_strat_vars[input$shape_var], ":"))
 			) +
-			coord_flip()
+			coord_flip(xlim = rev(range(df()$x)))
 	})
 
-	output$the_plot <- renderPlot({
+	final_plot <- reactive({
 		bar_plot() + points_plot() +
 			plot_layout(nrow = 1, widths = c(1, input$plot_bars_ratio))
+	}) %>%
+		debounce(750)
+
+	output$the_plot <- renderPlot({
+		final_plot()
 	})
 
 	output$main_panel <- renderUI({
